@@ -60,7 +60,7 @@ class Scraper
 
     public function getCategories()
     {
-        $crawler = $this->request('apps', array(
+        $crawler = $this->request('', array(
             'hl' => 'en',
             'gl' => 'us',
         ));
@@ -105,65 +105,62 @@ class Scraper
             'hl' => $lang,
             'gl' => $country,
         );
-        $crawler = $this->request(array('apps', 'details'), $params);
+        $crawler = $this->request('details', $params);
 
         $info = array();
         $info['id'] = $id;
-        $info['url'] = $crawler->filter('[itemprop="url"]')->attr('content');
-        $info['image'] = $this->getAbsoluteUrl($crawler->filter('[itemprop="image"]')->attr('src'));
-        $info['title'] = $crawler->filter('[itemprop="name"] > div')->text();
-        $info['author'] = $crawler->filter('[itemprop="author"] [itemprop="name"]')->text();
-        $info['author_link'] = $this->getAbsoluteUrl($crawler->filter('[itemprop="author"] > [itemprop="url"]')->attr('content'));
-        $info['categories'] = $crawler->filter('[itemprop="genre"]')->each(function ($node) {
+        $info['url'] = $crawler->filter('[itemprop="url"]')?$crawler->filter('[itemprop="url"]')->attr('content'):'';
+        $info['image'] = $crawler->filter('[itemprop="image"]')?$crawler->filter('[itemprop="image"]')->attr('src'):'';
+        $info['title'] = $crawler->filter('[itemprop="name"] > span')?$crawler->filter('[itemprop="name"] > span')->text():'';
+        $info['author'] = $crawler->filter('.oQ6oV span.T32cc > a')->count() > 0?$crawler->filter('.oQ6oV span.T32cc > a')->text():'';
+        $info['author_link'] = $crawler->filter('[itemprop="author"] > [itemprop="url"]')->count() > 0?$this->getAbsoluteUrl($crawler->filter('[itemprop="author"] > [itemprop="url"]')->attr('content')):'';
+        $info['categories'] = $crawler->filter('[itemprop="genre"]')->count() > 0?$crawler->filter('[itemprop="genre"]')->each(function ($node) {
             return $node->text();
-        });
-        $price = $crawler->filter('[itemprop="offers"] > [itemprop="price"]')->attr('content');
+        }):'';
+        $price = $crawler->filter('[itemprop="offers"] > [itemprop="price"]')->count() > 0?$crawler->filter('[itemprop="offers"] > [itemprop="price"]')->attr('content'):'0';
         $info['price'] = $price == '0' ? null : $price;
-        $info['screenshots'] = $crawler->filter('[itemprop="screenshot"]')->each(function ($node) {
-            return $this->getAbsoluteUrl($node->filter('img')->attr('src'));
-        });
-        $desc = $this->cleanDescription($crawler->filter('[itemprop="description"] > div'));
+        $info['screenshots'] = $crawler->filter('[itemprop="screenshot"]')->count() > 0?$crawler->filter('[itemprop="screenshot"]')->each(function ($node) {
+            return $node->filter('img')->attr('src');
+        }):'';
+        $desc = $crawler->filter('[itemprop="description"] > div')->count() > 0?$this->cleanDescription($crawler->filter('[itemprop="description"] > div')):array('text' => '', 'html' => '');
         $info['description'] = $desc['text'];
         $info['description_html'] = $desc['html'];
-        $ratingNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingValue"]');
+        $ratingNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingValue"]')?:null;
         if ($ratingNode->count()) {
             $rating = floatval($ratingNode->attr('content'));
         } else {
             $rating = 0.0;
         }
         $info['rating'] = $rating;
-        $votesNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingCount"]');
+        $votesNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingCount"]')?:null;
         if ($votesNode->count()) {
             $votes = intval($votesNode->attr('content'));
         } else {
             $votes = 0;
         }
         $info['votes'] = $votes;
-        $info['last_updated'] = trim($crawler->filter('[itemprop="datePublished"]')->text());
-        $sizeNode = $crawler->filter('[itemprop="fileSize"]');
-        if ($sizeNode->count()) {
-            $size = trim($sizeNode->text());
-        } else {
-            $size = null;
-        }
-        $info['size'] = $size;
-        $downloadsNode = $crawler->filter('[itemprop="numDownloads"]');
-        if ($downloadsNode->count()) {
-            $downloads = trim($downloadsNode->text());
-        } else {
-            $downloads = null;
-        }
-        $info['downloads'] = $downloads;
-        $versionNode = $crawler->filter('[itemprop="softwareVersion"]');
-        if ($versionNode->count()) {
-            $version = trim($versionNode->text());
-        } else {
-            $version = null;
-        }
-        $info['version'] = $version;
-        $info['supported_os'] = trim($crawler->filter('[itemprop="operatingSystems"]')->text());
-        $info['content_rating'] = $crawler->filter('[itemprop="contentRating"]')->text();
-        $whatsneNode = $crawler->filter('.recent-change');
+        if ($crawler->filter('.xyOfqd > .hAyfc')->count() > 0) {
+            $responseValue = $crawler->filter('.xyOfqd > .hAyfc')->each(function ($node) {
+                return $node->text();
+            }); 
+            foreach ($responseValue as $key => $value) {
+                if (strpos($value, 'Updated') !== false) {
+                    $info['last_updated'] = str_replace('Updated', '', $value);
+                } elseif (strpos($value, 'Size') !== false) {
+                    $info['size'] = str_replace('Size', '', $value);
+                } elseif (strpos($value, 'Installs') !== false) {
+                    $info['downloads'] = str_replace('Installs', '', $value);
+                } elseif (strpos($value, 'Current Version') !== false) {
+                    $info['version'] = str_replace('Current Version', '', $value);
+                } elseif (strpos($value, 'Requires Android') !== false) {                    
+                    $info['supported_os'] = str_replace('Requires Android', '', $value);
+                }
+            }
+        } 
+
+
+        $info['content_rating'] = $crawler->filter('[itemprop="contentRating"]')->count() > 0?$crawler->filter('[itemprop="contentRating"]')->text():'';
+        $whatsneNode = $crawler->filter('.recent-change')?:null;
         if ($whatsneNode->count()) {
             $info['whatsnew'] = implode("\n", $whatsneNode->each(function ($node) {
                 return $node->text();
@@ -171,9 +168,9 @@ class Scraper
         } else {
             $info['whatsnew'] = null;
         }
-        $videoNode = $crawler->filter('.details-trailer');
+        $videoNode = $crawler->filter('.details-trailer')?:null;
         if ($videoNode->count()) {
-            $info['video_link'] = $this->getAbsoluteUrl($videoNode->filter('.play-action-container')->attr('data-video-url'));
+            $info['video_link'] = $videoNode->filter('.play-action-container')->attr('data-video-url');
             $info['video_image'] = $this->getAbsoluteUrl($videoNode->filter('.video-image')->attr('src'));
         } else {
             $info['video_link'] = null;
@@ -213,7 +210,7 @@ class Scraper
             throw new \RangeException('"num" must be a number between 0 and 120');
         }
 
-        $path = array('apps');
+        $path = array();
         if ($category) {
             array_push($path, 'category', $category);
         }
@@ -226,7 +223,36 @@ class Scraper
         );
         $crawler = $this->request($path, $params);
 
-        return $this->parseAppList($crawler);
+        $apps = $crawler->filter('.card')->each(function ($node) {
+            $app = array();
+            $app['id'] = $node->attr('data-docid');
+            $app['url'] = self::BASE_URL.$node->filter('a')->attr('href');
+            $app['title'] = $node->filter('a.title')->attr('title');
+            $app['image'] = $node->filter('img.cover-image')->attr('data-cover-large');
+            $app['author'] = $node->filter('a.subtitle')->attr('title');
+            $ratingNode = $node->filter('.current-rating');
+            if (!$ratingNode->count()) {
+                $rating = 0.0;
+            } elseif (preg_match('/\d+(\.\d+)?/', $node->filter('.current-rating')->attr('style'), $matches)) {
+                $rating = floatval($matches[0]) * 0.05;
+            } else {
+                throw new \RuntimeException('Error parsing rating');
+            }
+            $app['rating'] = $rating;
+            $priceNode = $node->filter('.display-price');
+            if (!$priceNode->count()) {
+                $price = null;
+            } elseif (!preg_match('/\d/', $priceNode->text())) {
+                $price = null;
+            } else {
+                $price = $priceNode->text();
+            }
+            $app['price'] = $price;
+
+            return $app;
+        });
+
+        return $apps;
     }
 
     public function getList($collection, $category = null, $lang = null, $country = null)
@@ -267,76 +293,6 @@ class Scraper
         return $this->getApps($ids);
     }
 
-    public function getSearch($query, $price = 'all', $rating = 'all', $lang = null, $country = null)
-    {
-        $lang = $lang === null ? $this->lang : $lang;
-        $country = $country === null ? $this->country : $country;
-        $priceValues = array(
-            'all' => null,
-            'free' => 1,
-            'paid' => 2,
-        );
-        $ratingValues = array(
-            'all' => null,
-            '4+' => 1,
-        );
-
-        if (!is_string($query) || empty($query)) {
-            throw new \InvalidArgumentException('"query" must be a non empty string');
-        }
-
-        if (array_key_exists($price, $priceValues)) {
-            $price = $priceValues[$price];
-        } else {
-            throw new \InvalidArgumentException('"price" must contain one of the following values: '.implode(', ', array_keys($priceValues)));
-        }
-
-        if (array_key_exists($rating, $ratingValues)) {
-            $rating = $ratingValues[$rating];
-        } else {
-            throw new \InvalidArgumentException('"rating" must contain one of the following values: '.implode(', ', array_keys($ratingValues)));
-        }
-
-        $apps = array();
-        $path = array('search');
-        $params = array(
-            'q' => $query,
-            'c' => 'apps',
-            'hl' => $lang,
-            'gl' => $country,
-        );
-        if ($price) {
-            $params['price'] = $price;
-        }
-        if ($rating) {
-            $params['rating'] = $rating;
-        }
-
-        do {
-            $crawler = $this->request($path, $params);
-            $apps = array_merge($apps, $this->parseAppList($crawler));
-            unset($params['pagTok']);
-            foreach ($crawler->filter('script') as $scriptNode) {
-                if (preg_match('/\\\x22(GAE.+?)\\\x22/', $scriptNode->textContent, $matches)) {
-                    $params['pagTok'] = preg_replace('/\\\\\\\u003d/', '=', $matches[1]);
-                    break;
-                }
-            }
-        } while (array_key_exists('pagTok', $params));
-
-        return $apps;
-    }
-
-    public function getDetailSearch($query, $price = 'all', $rating = 'all', $lang = null, $country = null)
-    {
-        $apps = $this->getSearch($query, $price, $rating, $lang, $country);
-        $ids = array_map(function ($app) {
-            return $app['id'];
-        }, $apps);
-
-        return $this->getApps($ids);
-    }
-
     protected function request($path, array $params = array())
     {
         // handle delay
@@ -352,7 +308,7 @@ class Scraper
             $path = implode('/', $path);
         }
         $path = ltrim($path, '/');
-        $path = rtrim('/store/'.$path, '/');
+        $path = rtrim('/store/apps/'.$path, '/');
         $url = self::BASE_URL.$path;
         $query = http_build_query($params);
         if ($query) {
@@ -389,38 +345,6 @@ class Scraper
         }
 
         return $absoluteUrl;
-    }
-
-    protected function parseAppList(Crawler $crawler)
-    {
-        return $crawler->filter('.card')->each(function ($node) {
-            $app = array();
-            $app['id'] = $node->attr('data-docid');
-            $app['url'] = self::BASE_URL.$node->filter('a')->attr('href');
-            $app['title'] = $node->filter('a.title')->attr('title');
-            $app['image'] = $this->getAbsoluteUrl($node->filter('img.cover-image')->attr('data-cover-large'));
-            $app['author'] = $node->filter('a.subtitle')->attr('title');
-            $ratingNode = $node->filter('.current-rating');
-            if (!$ratingNode->count()) {
-                $rating = 0.0;
-            } elseif (preg_match('/\d+(\.\d+)?/', $node->filter('.current-rating')->attr('style'), $matches)) {
-                $rating = floatval($matches[0]) * 0.05;
-            } else {
-                throw new \RuntimeException('Error parsing rating');
-            }
-            $app['rating'] = $rating;
-            $priceNode = $node->filter('.display-price');
-            if (!$priceNode->count()) {
-                $price = null;
-            } elseif (!preg_match('/\d/', $priceNode->text())) {
-                $price = null;
-            } else {
-                $price = $priceNode->text();
-            }
-            $app['price'] = $price;
-
-            return $app;
-        });
     }
 
     protected function cleanDescription(Crawler $descriptionNode)

@@ -1,7 +1,7 @@
 {
-    "name": "raulr/google-play-scraper",
+    "name": "vortexgin/google-play-scraper",
     "type": "library",
-    "description": "A PHP scraper to get app data from Google Play",
+    "description": "A PHP scraper to get app data from Google Play. Fork from https://github.com/raulr/google-play-scraper",
     "keywords": ["google play", "scraper"],
     "homepage": "https://github.com/raulr/google-play-scraper",
     "license": "MIT",
@@ -12,6 +12,10 @@
         {
             "name": "Raul Rodriguez",
             "email": "raul@raulr.net"
+        }, 
+        {
+            "name": "Tommy Dian Pratama",
+            "email": "vortexgin@gmail.com"            
         }
     ],
     "autoload": {
