@@ -109,7 +109,7 @@ class Scraper
 
         $info = array();
         $info['id'] = $id;
-        $info['url'] = $crawler->filter('[itemprop="url"]')?$crawler->filter('[itemprop="url"]')->attr('content'):'';
+        $info['url'] = 'https://play.google.com/store/apps/details?id='.$id;
         $info['image'] = $crawler->filter('[itemprop="image"]')?$crawler->filter('[itemprop="image"]')->attr('src'):'';
         $info['title'] = $crawler->filter('[itemprop="name"] > span')?$crawler->filter('[itemprop="name"] > span')->text():'';
         $info['author'] = $crawler->filter('.oQ6oV span.T32cc > a')->count() > 0?$crawler->filter('.oQ6oV span.T32cc > a')->text():'';
