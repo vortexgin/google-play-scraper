@@ -109,6 +109,7 @@ class Scraper
 
         $info = array();
         $info['id'] = $id;
+        //$info['url'] = $crawler->filter('[itemprop="url"]')?$crawler->filter('[itemprop="url"]')->attr('content'):'';
         $info['url'] = 'https://play.google.com/store/apps/details?id='.$id;
         $info['image'] = $crawler->filter('[itemprop="image"]')?$crawler->filter('[itemprop="image"]')->attr('src'):'';
         $info['title'] = $crawler->filter('[itemprop="name"] > span')?$crawler->filter('[itemprop="name"] > span')->text():'';
@@ -125,16 +126,18 @@ class Scraper
         $desc = $crawler->filter('[itemprop="description"] > div')->count() > 0?$this->cleanDescription($crawler->filter('[itemprop="description"] > div')):array('text' => '', 'html' => '');
         $info['description'] = $desc['text'];
         $info['description_html'] = $desc['html'];
-        $ratingNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingValue"]')?:null;
+        //$ratingNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingValue"]')?:null;
+        $ratingNode = $crawler->filter('.K9wGie > .BHMmbe')?:null;
         if ($ratingNode->count()) {
-            $rating = floatval($ratingNode->attr('content'));
+            $rating = floatval($ratingNode->text());
         } else {
             $rating = 0.0;
         }
         $info['rating'] = $rating;
-        $votesNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingCount"]')?:null;
+        //$votesNode = $crawler->filter('[itemprop="aggregateRating"] > [itemprop="ratingCount"]')?:null;
+        $votesNode = $crawler->filter('.K9wGie > .EymY4b')?:null;
         if ($votesNode->count()) {
-            $votes = intval($votesNode->attr('content'));
+            $votes = $votesNode->text();
         } else {
             $votes = 0;
         }
